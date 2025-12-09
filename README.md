@@ -1,147 +1,147 @@
 # HyCoRAG: Hybrid Concept-Aware RAG for Complex Table Understanding
 
-HyCoRAG (Hybrid Concept RAG) is a self-evolving RAG pipeline designed to tackle complex, hierarchical, and multimodal tables. It moves beyond static embeddings by distilling tables into **Hybrid Concepts (Semantic, Structural, Contextual)** and dynamically routing queries to the most relevant concept subset.
+**Status**: Research Prototype - Infrastructure Complete, Validation In Progress
+
+HyCoRAG is a concept-based RAG pipeline for complex hierarchical tables. It decomposes tables into **semantic, structural, and contextual concepts** and routes query-relevant subsets to reduce context length.
 
 ## 🎯 Research Questions
 
-**RQ1 (Efficiency)**: Can concept distillation + routing reduce context length while maintaining QA performance compared to flattened Table-RAG?
+### RQ1: Context Efficiency + Performance Preservation
+> Can hybrid concept decomposition and routing reduce context length while **maintaining QA performance**?
 
-**RQ2 (Structure Awareness)**: Can explicit structural concepts (header paths, cell spans, row/col groups) reduce structural errors (cell misreference, unit errors) compared to structure-agnostic approaches?
+**Current Status**: 
+- ✅ Context reduction demonstrated (97% on RealHiTBench)
+- ⚠️ Performance preservation not yet validated (LLM integration pending large-scale eval)
 
-## 🚀 Key Features
+### RQ2: Structural Error Reduction
+> Can explicit structural concepts (header paths, cell spans) reduce structural errors compared to flattened approaches?
 
-*   **Hybrid Concept Distillation**: Compresses raw tables (image + structure + text) into semantic, structural, and contextual vectors
-*   **Dynamic Concept Routing**: Selects only necessary concepts per query, reducing context length (RQ1)
-*   **Structure-Awareness**: Explicitly models table hierarchy to prevent cell mismatch errors (RQ2)
-*   **Self-Evolving Capability**: (Planned) Adapts concepts to new domains via feedback loops
+**Current Status**:
+- ✅ Metrics implemented (header path match, unit match)
+- ❌ Baseline vs HyCoRAG comparison not yet conducted
 
-## 📊 Validation Results (RealHiTBench)
+### Future: Self-Evolving Concept Space (Planned)
+> Can the system adapt concept representations across domain shifts without catastrophic forgetting?
+
+**Current Status**: 
+- ✅ Adapter architecture designed
+- ❌ Sequential domain training not yet implemented
+
+## 📊 Current Results
+
+### Context Reduction (RealHiTBench, 10 samples)
 
 | Mode | Context Length | Concept Count | Reduction |
 |:-----|:---------------|:--------------|:----------|
-| **Baseline** (Flatten) | 15,484 tokens | - | - |
-| **Distill Only** | 476 tokens | 5,559 | **96.9%** ↓ |
-| **Full** (Routing) | 461 tokens | **15** | **97.0%** ↓ |
+| Baseline (Flatten) | 15,444 tokens | - | - |
+| Distill Only | 476 tokens | 5,559 | 96.9% ↓ |
+| **Full (Routing)** | **461 tokens** | **15** | **97.0% ↓** |
 
-**Key Finding**: HyCoRAG achieves **97% context reduction** (15,484 → 461 tokens) through concept distillation and routing.
+**Interpretation**: Concept routing achieves 33× context compression. **Performance impact not yet measured.**
 
-## 🧪 Experiment Strategy
+### Adapter Efficiency (Continual Learning Demo)
 
-### Stage 0: Text-Based RAG (Debugging & Baseline)
-*   **Datasets**: HotpotQA, NQ Open
-*   **Goal**: Verify pipeline mechanics and ablation modes
-*   **Status**: ✅ Implemented
+| Component | Parameters | Overhead |
+|:----------|:-----------|:---------|
+| Base Encoder | 5.0M | - |
+| Domain Adapters (2×) | 201K | **4.03%** |
 
-### Stage 1: Multimodal Table Understanding
-*   **Datasets**: MMTab (primary), ComTQA
-*   **Goal**: Validate hybrid concept distillation on visual tables
-*   **Status**: ✅ Adapters ready, needs LLM integration
+## 🛠️ Implementation Status
 
-### Stage 2: Hierarchical Table Reasoning (RQ1/RQ2 Focus)
-*   **Dataset**: RealHiTBench (3,071 queries, complex hierarchical tables)
-*   **Goal**: Evaluate structure-awareness and context efficiency
-*   **Status**: ✅ **Validated** - 97% context reduction achieved
+### Core Components ✅
+- [x] **TableEncoder**: BERT-tiny + learnable structural embeddings
+- [x] **Concept Decomposition**: Granular semantic/structural/contextual separation
+- [x] **Concept Router**: Query-conditioned Top-k selection
+- [x] **Ablation Framework**: Baseline / Distill-only / Full modes
+- [x] **RealHiTBench Integration**: HTML parsing with structure preservation
 
-### Stage 3: Interleaved Image-Text RAG
-*   **Dataset**: RAG-IGBench
-*   **Goal**: Test robustness in mixed-modality retrieval
-*   **Status**: ✅ Adapter ready
+### Evaluation Infrastructure ✅
+- [x] Multi-stage pipeline (Text → Multimodal → Hierarchical)
+- [x] Unified `QAExample` schema across datasets
+- [x] Structural metrics (header path, unit match)
+- [x] Local LLM integration (Qwen2.5-3B)
 
-## 🛠️ Installation & Usage
+### Pending Validation ⚠️
+- [ ] **RQ1 Full Validation**: EM/F1 comparison (Baseline vs HyCoRAG, n≥100)
+- [ ] **RQ2 Quantification**: Structural error rate measurement
+- [ ] **Distillation Objective**: KD-style loss for true knowledge transfer
+- [ ] **Self-Evolving Training**: Sequential domain adaptation with forgetting metrics
 
-### Setup
+## 🚀 Usage
+
+### Quick Start
 ```bash
-# Clone repository
-git clone https://huggingface.co/datasets/spzy/RealHiTBench
-cd HyCoRAG
-
 # Install dependencies
 pip install -e .
-pip install transformers beautifulsoup4
+pip install transformers accelerate beautifulsoup4
 
-# Download RealHiTBench dataset
-git lfs install
+# Clone RealHiTBench dataset
 git clone https://huggingface.co/datasets/spzy/RealHiTBench
+
+# Run experiments
+python scripts/run_hycorag.py --stage table_hier --dataset realhitbench --mode baseline --max_samples 10
+python scripts/run_hycorag.py --stage table_hier --dataset realhitbench --mode full --max_samples 10
 ```
 
-### Running Experiments
-```bash
-# Baseline (Flattened Table)
-python scripts/run_hycorag.py --stage table_hier --dataset realhitbench --mode baseline --max_samples 5
-
-# HyCoRAG (Distill + Route)
-python scripts/run_hycorag.py --stage table_hier --dataset realhitbench --mode full --max_samples 5
-
-# Ablation: Distill Only (No Routing)
-python scripts/run_hycorag.py --stage table_hier --dataset realhitbench --mode distill_only --max_samples 5
-```
+### Experiment Stages
+- **Stage 0**: Text QA (HotpotQA, NQ Open) - baseline debugging
+- **Stage 1**: Multimodal Tables (MMTab, ComTQA) - visual + text
+- **Stage 2**: Hierarchical Tables (RealHiTBench) - complex structure
+- **Stage 3**: Interleaved (RAG-IGBench) - mixed modality
 
 ## 📂 Project Structure
-*   `hycorag/`: Core package
-    *   `data/`: Dataset loaders with structure preservation ([datasets.py](hycorag/data/datasets.py))
-    *   `models/`: Core models
-        *   [table_encoder.py](hycorag/models/table_encoder.py): BERT + Structural Embeddings
-        *   [concept_distill.py](hycorag/models/concept_distill.py): Semantic/Structural/Contextual separation
-        *   [concept_router.py](hycorag/models/concept_router.py): Query-based Top-k selection
-    *   `rag/`: RAG pipeline ([pipeline.py](hycorag/rag/pipeline.py), [retriever.py](hycorag/rag/retriever.py))
-    *   `evaluation/`: Experiment runners and metrics
-*   `scripts/`: CLI entry points and debug tools
-*   `RealHiTBench/`: Local dataset clone (3,071 hierarchical table QA pairs)
+```
+hycorag/
+├── data/           # Dataset adapters (HotpotQA, MMTab, RealHiTBench, etc.)
+├── models/         # TableEncoder, ConceptDistiller, ConceptRouter
+├── rag/            # Pipeline, Retriever, LLM clients
+├── evaluation/     # Experiment runners, metrics, structure analyzer
+scripts/            # CLI entry points, debug tools
+```
 
-## ✅ Implementation Status
-
-### Completed
-- [x] **Core Pipeline** (Retrieve → Distill → Route → Generate)
-- [x] **TableEncoder v1**: BERT-tiny (text) + Learnable Embeddings (structure)
-- [x] **HybridConceptDistiller**: Granular concept generation (3N+1 per table)
-- [x] **ConceptRouter**: Cosine similarity-based Top-k selection
-- [x] **RealHiTBench Integration**: HTML parsing with BeautifulSoup
-- [x] **Metadata Propagation**: Structure preservation through retrieval pipeline
-- [x] **Structural Metrics**: Header path match, unit match (RQ2)
-- [x] **Ablation Framework**: Baseline/Distill/Full modes
-- [x] **RQ1 Validation**: 97% context reduction demonstrated
-
-### In Progress
-- [ ] **LLM Integration**: Replace dummy LLM with GPT-4/Claude/LLaMA
-- [ ] **Large-Scale Experiments**: 100+ samples for statistical significance
-- [ ] **RQ2 Quantification**: Measure structural error reduction
-- [ ] **Ablation Studies**: Component-wise contribution analysis
-
-### Planned
-- [ ] **Self-Evolving Mechanism**: Domain adaptation via feedback
-- [ ] **Batch Processing**: Optimize for large-scale corpus
-- [ ] **Model Checkpointing**: Save/load trained components
-- [ ] **Unit Tests**: Comprehensive test coverage
-
-## 🔬 Next Steps
+## 🔬 Next Steps (Priority Order)
 
 ### 1. Complete RQ1 Validation
-**Goal**: Prove context reduction maintains/improves QA performance
+**Goal**: Prove context reduction doesn't hurt performance
 
-**Tasks**:
-- Integrate real LLM (OpenAI API or local LLaMA)
-- Run 100+ sample experiments
-- Compare EM/F1 scores: Baseline vs HyCoRAG
+- [ ] Run 100+ sample experiments (Baseline vs HyCoRAG)
+- [ ] Measure EM/F1, context length, latency
+- [ ] Statistical significance testing
 
-### 2. RQ2 Validation
-**Goal**: Quantify structural error reduction
+### 2. RQ2 Quantification
+**Goal**: Measure structural error reduction
 
-**Tasks**:
-- Parse RealHiTBench ground-truth header paths
-- Measure header path match rate
-- Analyze unit/cell reference errors
+- [ ] Extract ground truth header paths (50 samples)
+- [ ] Compare header/cell/unit error rates
+- [ ] Ablation: Structural concepts on/off
 
-### 3. Ablation Studies
-**Experiments**:
-- Semantic-only vs Structural-only concepts
-- Different routing strategies (Top-k, threshold-based)
-- Impact of concept granularity
+### 3. Strengthen "Distillation" Claim
+**Goal**: Add true knowledge transfer objective
 
-### 4. Optimization
-**Targets**:
-- Batch concept distillation
-- Caching precomputed concepts
-- Distributed processing for large corpora
+- [ ] Implement teacher-student KD loss
+- [ ] Train concept representations to match LLM hidden states
+- [ ] Measure concept quality (alignment, coverage)
+
+### 4. Self-Evolving Prototype (Future Work)
+**Goal**: Demonstrate continual learning
+
+- [ ] Sequential training: HotpotQA → MMTab → RealHiTBench
+- [ ] Measure forward/backward transfer
+- [ ] Catastrophic forgetting analysis
+
+## ⚠️ Known Limitations
+
+### Current Implementation
+- **Small-scale validation**: 10-20 samples per experiment
+- **Dummy metrics**: EM/F1 = 0.0 due to answer normalization issues
+- **Header extraction**: RealHiTBench uses `<td>` for headers, not `<th>`
+- **No training loop**: Concept representations are not optimized
+
+### Research Gaps
+- **RQ1**: Context reduction shown, but performance preservation not validated
+- **RQ2**: Metrics designed, but no baseline comparison conducted
+- **Distillation**: Currently more "decomposition + selection" than true distillation
+- **Self-Evolving**: Architecture designed, but no sequential training implemented
 
 ## 📝 Citation
 
@@ -150,7 +150,8 @@ python scripts/run_hycorag.py --stage table_hier --dataset realhitbench --mode d
   title={HyCoRAG: Hybrid Concept-Aware RAG for Complex Table Understanding},
   author={[Your Name]},
   year={2024},
-  url={https://github.com/[your-repo]/HyCoRAG}
+  note={Research Prototype},
+  url={https://github.com/Jax0303/HyCoRAG}
 }
 ```
 
@@ -160,4 +161,4 @@ MIT License
 
 ---
 
-**Current Status**: ✅ Core implementation complete, RQ1 validated (97% context reduction), ready for LLM integration and large-scale experiments.
+**Honest Assessment**: This is a well-structured research prototype with solid infrastructure for RQ1/RQ2 validation. Context reduction is demonstrated, but performance preservation and structural error reduction require further experimentation. Self-evolving capabilities are planned but not yet implemented.

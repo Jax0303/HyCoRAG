@@ -19,7 +19,6 @@ class RAGResult:
     retrieved_items: List[Any]
     metadata: Dict[str, Any] = None
 
-class DummyLLMClient(LLMClient):
     """
     Dummy LLM client for testing without API calls.
     """
@@ -59,6 +58,18 @@ class BaselineRAGPipeline(BaseRAGPipeline):
 
 from ..models.concept_distill import HybridConceptDistiller, HierarchicalConcepts
 from ..models.concept_router import ConceptRouter, RoutedConcepts
+import torch
+
+from typing import Literal
+
+from typing import List, Dict, Any, Optional, Literal
+from dataclasses import dataclass
+import torch
+
+from .retriever import BaseRetriever, RetrievedItem
+from ..models.concept_distill import HybridConceptDistiller, HierarchicalConcepts
+from ..models.concept_router import ConceptRouter, RoutedConcepts
+from .llm_client import LLMClient, DummyLLMClient, LocalLLMClient
 import torch
 
 from typing import Literal
