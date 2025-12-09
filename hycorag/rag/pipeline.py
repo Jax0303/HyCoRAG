@@ -153,8 +153,14 @@ class HyCoRAGPipeline(BaseRAGPipeline):
                 )
                 selected_concepts_list.append(routed)
             else:
-                # "full" mode: Route with limited top_k
-                routed = self.router.route(query_emb, hierarchical_concepts, top_k=2)
+                # "full" mode: Route with limited top_k + structural quota
+                # HYBRID: Use quota (not header_first) for efficiency
+                routed = self.router.route(
+                    query_emb, 
+                    hierarchical_concepts, 
+                    top_k=2,
+                    header_first=False  # Use quota instead for efficiency
+                )
                 selected_concepts_list.append(routed)
             
         # 3. Context Construction with EXPLICIT HEADERS
