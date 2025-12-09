@@ -1,8 +1,21 @@
 # HyCoRAG: Hybrid Concept-Aware RAG for Complex Table Understanding
 
-**Status**: ✅ **Core Hypotheses Validated** - RQ1 & RQ2 Confirmed
+**Status**: 🔧 **Addressing Publication Readiness** - Implementing Cell-Header Attention
 
 HyCoRAG is a concept-based RAG system for hierarchical tables that achieves **96.5% context reduction** while **improving structural awareness by 104%** through hybrid concept routing and header-explicit prompting.
+
+## 📚 Documentation
+
+### Research & Planning
+- **[Critical Evaluation Report](docs/critical_evaluation.md)** - Comprehensive publication readiness assessment
+- **[Novelty Enhancement Plan](docs/novelty_enhancement_plan.md)** - Architectural differentiation strategy
+- **[Phase 1 Progress](docs/phase1_progress.md)** - Cell-Header Attention implementation status
+
+### Current Focus
+**Phase 1: Cell-Header Attention** (In Progress)
+- Goal: Improve cell accuracy from 8.2% → 35%+
+- Status: Core modules implemented ✅, RAG integration pending
+- Key Innovation: Explicit cell-header relational modeling via Multi-head Attention
 
 ## 🎯 Research Questions - VALIDATED
 
