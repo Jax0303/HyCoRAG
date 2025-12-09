@@ -145,50 +145,75 @@ class HyCoRAGPipeline(BaseRAGPipeline):
                 # Here we simulate "routing" that selects everything.
                 # But RoutedConcepts expects tensors.
                 # Let's just select top-k with very large k
-                routed = self.router.route(query_emb, hierarchical_concepts, top_k=1000)
+                routed = self.router.route(
+                    query_emb, 
+                    hierarchical_concepts, 
+                    top_k=1000,
+                    header_first=True  # NEW: Include ALL headers to exceed baseline
+                )
                 selected_concepts_list.append(routed)
             else:
                 # "full" mode: Route with limited top_k
                 routed = self.router.route(query_emb, hierarchical_concepts, top_k=2)
                 selected_concepts_list.append(routed)
             
-        # 3. Context Construction
-        # Serialize selected concepts into a compact string
+        # 3. Context Construction with EXPLICIT HEADERS
+        # Extract headers from table structure for prominence
         context_parts = []
         total_concepts = 0
         
-        for i, routed in enumerate(selected_concepts_list):
-            # Simple serialization for now
-            # In real impl, we'd convert tensors back to text/tokens or use soft prompts
-            
+        for i, (routed, item) in enumerate(zip(selected_concepts_list, retrieved_items)):
             # Count concepts
             n_sem = routed.semantic.size(0)
             n_str = routed.structural.size(0)
             n_ctx = routed.contextual.size(0)
             total_concepts += (n_sem + n_str + n_ctx)
             
-            context_parts.append(f"Table {i+1} Concepts:")
-            context_parts.append(f"- Semantic: {n_sem} items")
-            context_parts.append(f"- Structural: {n_str} items")
-            context_parts.append(f"- Contextual: {n_ctx} items")
-            # Add original text snippet for dummy LLM to work
-            context_parts.append(f"Original Snippet: {retrieved_items[i].text[:50]}...")
-
-        context = "\n".join(context_parts)
+            # CRITICAL: Extract and emphasize headers
+            headers = []
+            if item.metadata and 'structure' in item.metadata:
+                structure = item.metadata['structure']
+                if 'cells' in structure:
+                    # Extract unique header texts
+                    header_set = set()
+                    for cell in structure['cells']:
+                        if cell.get('is_header', False):
+                            header_set.add(cell['text'])
+                    headers = sorted(list(header_set))
+            
+            context_parts.append(f"\n{'='*60}")
+            context_parts.append(f"TABLE {i+1}")
+            context_parts.append(f"{'='*60}")
+            
+            # EXPLICIT HEADER SECTION (makes headers prominent)
+            if headers:
+                context_parts.append(f"\n**TABLE HEADERS** (Important structural information):")
+                for h in headers:
+                    context_parts.append(f"  • {h}")
+                context_parts.append("")
+            
+            # Concept summary
+            context_parts.append(f"Routed Concepts: {n_sem} semantic, {n_str} structural, {n_ctx} contextual")
+            
+            # Original text snippet
+            context_parts.append(f"\nTable Content Preview:")
+            context_parts.append(item.text[:500] + "..." if len(item.text) > 500 else item.text)
+        
+        context_str = "\n".join(context_parts)
         
         # Log stats (simulated logging)
         # print(f"[HyCoRAG] Selected {total_concepts} concepts from {len(retrieved_items)} tables.")
         
         # 4. Generation
-        prompt = f"Context:\n{context}\n\nQuestion: {query}\nAnswer:"
+        prompt = f"Context:\n{context_str}\n\nQuestion: {query}\nAnswer:"
         answer = self.llm.generate(prompt)
         
         return RAGResult(
             answer=answer, 
             retrieved_items=retrieved_items,
             metadata={
-                "context_length": len(context),
                 "total_concepts": total_concepts,
-                "concepts_per_table": total_concepts / max(1, len(retrieved_items))
+                "context_length": len(context_str),
+                "mode": self.mode
             }
         )

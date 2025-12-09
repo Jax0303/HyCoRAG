@@ -4,18 +4,38 @@ import re
 from typing import List
 
 def normalize_answer(s):
-    """Lower text and remove punctuation, articles and extra whitespace."""
+    """
+    Improved normalization for table QA answers.
+    Handles numbers, units, percentages, and common variations.
+    """
     def remove_articles(text):
-        regex = re.compile(r'\b(a|an|the)\b', re.UNICODE)
-        return re.sub(regex, ' ', text)
+        return re.sub(r'\b(a|an|the)\b', ' ', text)
+
     def white_space_fix(text):
         return ' '.join(text.split())
+
     def remove_punc(text):
         exclude = set(string.punctuation)
-        return ''.join(ch for ch in text if ch not in exclude)
+        return ''.join(ch if ch not in exclude else ' ' for ch in text)
+
     def lower(text):
         return text.lower()
-    return white_space_fix(remove_articles(remove_punc(lower(s))))
+    
+    def normalize_numbers(text):
+        # Normalize number formats: 1,000 -> 1000, $100M -> 100M
+        text = re.sub(r'[\$€£¥]', '', text)  # Remove currency symbols
+        text = re.sub(r',(\d{3})', r'\1', text)  # Remove thousand separators
+        return text
+
+    # Apply all normalizations
+    s = str(s)
+    s = normalize_numbers(s)
+    s = lower(s)
+    s = remove_punc(s)
+    s = remove_articles(s)
+    s = white_space_fix(s)
+    
+    return s
 
 def calculate_em(prediction, ground_truth):
     """Exact match score."""

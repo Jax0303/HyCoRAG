@@ -5,9 +5,10 @@ from typing import Dict, List, Tuple, Optional
 from bs4 import BeautifulSoup
 import os
 
-def extract_header_hierarchy(html_path: str) -> Dict[str, List[str]]:
+def extract_header_hierarchy(html_path: str) -> Dict[Tuple[int, int], List[str]]:
     """
     Extract header paths for each data cell in a table.
+    Uses heuristics for tables without explicit <th> tags.
     
     Args:
         html_path: Path to HTML file containing table
@@ -29,21 +30,44 @@ def extract_header_hierarchy(html_path: str) -> Dict[str, List[str]]:
     # Parse table structure
     rows = table.find_all('tr')
     
-    # Step 1: Identify header rows (rows containing mostly <th> tags)
+    # Step 1: Identify header rows using multiple heuristics
     header_rows = []
     data_start_row = 0
     
     for r_idx, row in enumerate(rows):
         cells = row.find_all(['td', 'th'])
-        th_count = len(row.find_all('th'))
         
-        # If more than 50% are headers, consider it a header row
+        # Heuristic 1: <th> tags
+        th_count = len(row.find_all('th'))
         if th_count > len(cells) / 2:
             header_rows.append(r_idx)
+            continue
+        
+        # Heuristic 2: First N rows (assume first 2 rows are headers if no <th>)
+        if r_idx < 2 and not header_rows:
+            # Check if cells look like headers (short text, no numbers)
+            is_header_like = True
+            for cell in cells:
+                text = cell.get_text(strip=True)
+                # If cell has many digits, likely data not header
+                if len(text) > 50 or (text and sum(c.isdigit() for c in text) / len(text) > 0.3):
+                    is_header_like = False
+                    break
+            
+            if is_header_like:
+                header_rows.append(r_idx)
+            else:
+                data_start_row = r_idx
+                break
         else:
             if not data_start_row:
                 data_start_row = r_idx
-                break
+            break
+    
+    # If no headers found, assume first row
+    if not header_rows and len(rows) > 0:
+        header_rows = [0]
+        data_start_row = 1
     
     # Step 2: Build header hierarchy
     # For each column, track the header path from top to bottom
